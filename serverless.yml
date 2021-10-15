@@ -28,6 +28,9 @@ provider:
   lambdaHashingVersion: 20201221
   stage: ${opt:stage, 'dev'}
   region: us-west-2
+  apiGateway:
+    binaryMediaTypes:
+      - '*/*'
 
 # you can overwrite defaults here
 #  stage: dev
