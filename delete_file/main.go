@@ -55,13 +55,17 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		return Response{StatusCode: 500}, fmt.Errorf("no userId found???\n")
 	}
 
-	tableItem, err := aws_usages.GetDynamoDB("dev-files", fileID)
+	tableItem, err := aws_usages.GetDynamoDB("dev-files", fileIdRaw)
 	if err != nil {
 		return Response{StatusCode: 500}, err
 	}
 
 	if tableItem.UserID != userId {
 		return Response{StatusCode: 404}, nil
+	}
+
+	if err = aws_usages.DeleteDynamoDB("dev-files", fileID); err != nil {
+		return Response{StatusCode: 500}, err
 	}
 
 	signedUrl, err := aws_usages.SignURL(fmt.Sprintf("https://d3kp1rtsk23gz0.cloudfront.net/%s", fileID))

@@ -114,17 +114,17 @@ functions:
               paths:
                 userId: true
                 fileId: true
-  # deleteFile:
-  #   handler: bin/delete_file
-  #   events:
-  #     - http:
-  #         path: /{userId}/{fileId}
-  #         method: delete
-  #         request:
-  #           parameters:
-  #             paths:
-  #               userId: true
-  #               fileId: true
+  deleteFile:
+    handler: bin/delete_file
+    events:
+      - http:
+          path: /{userId}/{fileId}
+          method: delete
+          request:
+            parameters:
+              paths:
+                userId: true
+                fileId: true
   # getUserFiles:
   #   handler: bin/get_user_files
   #   events:

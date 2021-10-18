@@ -14,6 +14,25 @@ import (
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
 
+func DeleteDynamoDB(tableName string, fileID string) error {
+	svc := dynamodb.New(session.New(),
+		aws.NewConfig().WithRegion("us-west-2"))
+
+	_, err := svc.DeleteItem(&dynamodb.DeleteItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"FileID": {
+				S: aws.String(fileID),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("dynamodb responded with error: %v, error: %v\n", tableName, err)
+	}
+
+	return nil
+}
+
 func GetDynamoDB(tableName string, fileID string) (*FileTableItem, error) {
 	svc := dynamodb.New(session.New(),
 		aws.NewConfig().WithRegion("us-west-2"))
