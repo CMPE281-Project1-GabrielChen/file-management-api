@@ -10,17 +10,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-/****************Upload File Lambda********************/
-// path: /{userId}
-// steps 1:
-// - put a new item in dynamoDB with a generated fields: UUID for fileID, string for TS
-// step 2:
-// - put item in s3 with the fileID
-// return status 200 if all of these are accomplished, and return in body json with fields...
-
-// Response is of type APIGatewayProxyResponse since we're leveraging the
-// AWS Lambda Proxy Request functionality (default behavior)
-//
 // https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
 type Response events.APIGatewayProxyResponse
 
@@ -55,7 +44,7 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		return Response{StatusCode: 500}, fmt.Errorf("no userId found???\n")
 	}
 
-	tableItem, err := aws_usages.GetDynamoDB("dev-files", fileID)
+	tableItem, err := aws_usages.GetFileDynamoDB("dev-files", fileID)
 	if err != nil {
 		return Response{StatusCode: 500}, err
 	}

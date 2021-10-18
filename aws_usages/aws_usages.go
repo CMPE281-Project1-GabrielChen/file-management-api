@@ -11,8 +11,82 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudfront/sign"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
+
+type FileTableItem struct {
+	FileID   string `json:"FileID"`
+	UserID   string `json:"UserID"`
+	FileName string `json:"FileName"`
+	Modified string `json:"Modified"`
+}
+
+func ListAllFilesDynamoDB(tableName string) (*[]FileTableItem, error) {
+	svc := dynamodb.New(session.New(),
+		aws.NewConfig().WithRegion("us-west-2"))
+
+	params := &dynamodb.ScanInput{
+		TableName: aws.String(tableName),
+	}
+
+	result, err := svc.Scan(params)
+	if err != nil {
+		return nil, fmt.Errorf("query api call failed: %s", err)
+	}
+
+	var files []FileTableItem
+
+	for _, i := range result.Items {
+		f := FileTableItem{}
+		err = dynamodbattribute.UnmarshalMap(i, &f)
+		if err != nil {
+			return nil, fmt.Errorf("Got error unmarshalling: %s", err)
+		}
+
+		files = append(files, f)
+	}
+
+	return &files, nil
+}
+
+func ListFilesDynamoDB(tableName string, userID string) (*[]FileTableItem, error) {
+	svc := dynamodb.New(session.New(),
+		aws.NewConfig().WithRegion("us-west-2"))
+
+	filt := expression.Name("UserID").Equal(expression.Value(userID))
+
+	expr, err := expression.NewBuilder().WithFilter(filt).Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %s", err)
+	}
+
+	params := &dynamodb.ScanInput{
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		FilterExpression:          expr.Filter(),
+		TableName:                 aws.String(tableName),
+	}
+
+	result, err := svc.Scan(params)
+	if err != nil {
+		return nil, fmt.Errorf("query api call failed: %s", err)
+	}
+
+	var files []FileTableItem
+
+	for _, i := range result.Items {
+		f := FileTableItem{}
+		err = dynamodbattribute.UnmarshalMap(i, &f)
+		if err != nil {
+			return nil, fmt.Errorf("Got error unmarshalling: %s", err)
+		}
+
+		files = append(files, f)
+	}
+
+	return &files, nil
+}
 
 func DeleteDynamoDB(tableName string, fileID string) error {
 	svc := dynamodb.New(session.New(),
@@ -33,7 +107,7 @@ func DeleteDynamoDB(tableName string, fileID string) error {
 	return nil
 }
 
-func GetDynamoDB(tableName string, fileID string) (*FileTableItem, error) {
+func GetFileDynamoDB(tableName string, fileID string) (*FileTableItem, error) {
 	svc := dynamodb.New(session.New(),
 		aws.NewConfig().WithRegion("us-west-2"))
 
@@ -59,13 +133,6 @@ func GetDynamoDB(tableName string, fileID string) (*FileTableItem, error) {
 	}
 
 	return &file, nil
-}
-
-type FileTableItem struct {
-	FileID   string `json:"FileID"`
-	UserID   string `json:"UserID"`
-	FileName string `json:"FileName"`
-	Modified string `json:"Modified"`
 }
 
 func PutDynamoDB(tableName string, fileData FileTableItem) error {

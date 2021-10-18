@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -12,6 +13,10 @@ import (
 
 // https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
 type Response events.APIGatewayProxyResponse
+
+type ListFilesReturn struct {
+	Files []aws_usages.FileTableItem `json:"Files"`
+}
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
 func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Response, error) {
@@ -30,44 +35,20 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		return Response{StatusCode: 500}, fmt.Errorf("no userId found???\n")
 	}
 
-	fileIdRaw, found := request.PathParameters["fileId"]
-	var fileID string
-	if found {
-		value, err := url.QueryUnescape(fileIdRaw)
-		if nil != err {
-			return Response{StatusCode: 500},
-				fmt.Errorf("failed to unescape fileIdRaw: %v, error: %v\n", fileIdRaw, err)
-		}
-
-		fileID = value
-	} else {
-		return Response{StatusCode: 500}, fmt.Errorf("no userId found???\n")
-	}
-
-	tableItem, err := aws_usages.GetFileDynamoDB("dev-files", fileIdRaw)
+	tableItems, err := aws_usages.ListFilesDynamoDB("dev-files", userId)
 	if err != nil {
 		return Response{StatusCode: 500}, err
 	}
 
-	if tableItem.UserID != userId {
-		return Response{StatusCode: 404}, nil
-	}
-
-	if err = aws_usages.DeleteDynamoDB("dev-files", fileID); err != nil {
-		return Response{StatusCode: 500}, err
-	}
-
-	signedUrl, err := aws_usages.SignURL(fmt.Sprintf("https://d3kp1rtsk23gz0.cloudfront.net/%s", fileID))
+	js, err := json.Marshal(tableItems)
 	if err != nil {
-		return Response{StatusCode: 500}, fmt.Errorf("failed to sign url\n")
+		return Response{StatusCode: 500}, fmt.Errorf("failed to marshal signedURL\n")
 	}
 
 	return Response{
-		StatusCode:      307,
+		StatusCode:      200,
 		IsBase64Encoded: false,
-		Headers: map[string]string{
-			"Location": signedUrl,
-		},
+		Body:            string(js),
 	}, nil
 }
 

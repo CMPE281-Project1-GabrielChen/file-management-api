@@ -125,22 +125,22 @@ functions:
               paths:
                 userId: true
                 fileId: true
-  # getUserFiles:
-  #   handler: bin/get_user_files
-  #   events:
-  #     - http:
-  #         path: /{userId}
-  #         method: get
-  #         request:
-  #           parameters:
-  #             paths:
-  #               userId: true
-  # getAllFiles:
-  #   handler: bin/get_all_files
-  #   events:
-  #     - http:
-  #         path: /
-  #         method: get
+  listUserFiles:
+    handler: bin/list_files
+    events:
+      - http:
+          path: /{userId}
+          method: get
+          request:
+            parameters:
+              paths:
+                userId: true
+  listAllFiles:
+    handler: bin/list_all_files
+    events:
+      - http:
+          path: /
+          method: get
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
