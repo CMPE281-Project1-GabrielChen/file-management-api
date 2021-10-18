@@ -1,14 +1,10 @@
-package main
+package aws_usages
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -18,56 +14,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
 
-// Response is of type APIGatewayProxyResponse since we're leveraging the
-// AWS Lambda Proxy Request functionality (default behavior)
-//
-// https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
-type Response events.APIGatewayProxyResponse
-
-type File struct {
-	UserID   string
-	FileID   string
-	FileName string
-	Modified string
-	Location string
-}
-
-// Handler is our lambda handler invoked by the `lambda.Start` function call
-func Handler(ctx context.Context) (Response, error) {
-	tableName := "dev-files"
-	fileID := "testing-file"
-
+func GetDynamoDB(tableName string, fileID string) (*FileTableItem, error) {
 	svc := dynamodb.New(session.New(),
 		aws.NewConfig().WithRegion("us-west-2"))
 
 	result, err := svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"UserID": {
-				S: aws.String("testing-user"),
-			},
-		},
-	})
-
-	if err != nil {
-		fmt.Printf("failed to retrieve item from dynamodb %v\n", err)
-	}
-
-	if result.Item == nil {
-		fmt.Printf("item not found\n")
-	}
-
-	file := File{}
-
-	err = dynamodbattribute.UnmarshalMap(result.Item, &file)
-	if err != nil {
-		fmt.Printf("failed to unmarshal")
-	}
-
-	fmt.Println("UserID Item")
-	fmt.Printf("fileID: %v UserID: %v\n", file.FileID, file.UserID)
-
-	result, err = svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"FileID": {
@@ -75,62 +26,49 @@ func Handler(ctx context.Context) (Response, error) {
 			},
 		},
 	})
-
 	if err != nil {
-		fmt.Printf("failed to retrieve item from dynamodb %v\n", err)
+		return nil, fmt.Errorf("failed to query dynamodb tableName: %v, error: %v\n", tableName, err)
 	}
-
 	if result.Item == nil {
-		fmt.Printf("item not found\n")
+		return nil, fmt.Errorf("item not found tableName: %v, fileId: %v\n", fileID)
 	}
-
-	file = File{}
+	file := FileTableItem{}
 
 	err = dynamodbattribute.UnmarshalMap(result.Item, &file)
 	if err != nil {
-		fmt.Printf("failed to unmarshal")
+		return nil, fmt.Errorf("failed to unmarshal\n")
 	}
 
-	fmt.Println("FileID Item")
-	fmt.Printf("fileID: %v UserID: %v\n", file.FileID, file.UserID)
-
-	// userID := "testing-user"
-
-	privateKeyARN := "arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-private-key-eZTVru"
-	privateKeyString, err := RetrieveSecret(privateKeyARN)
-	if err != nil {
-		fmt.Printf("failed to retrieve private key %v\n", privateKeyARN)
-	}
-
-	publicIDARN := "arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-public-id-tyo5xL"
-	publicIDString, err := RetrieveSecret(publicIDARN)
-	if err != nil {
-		fmt.Printf("failed to retrieve publicID %v\n", publicIDARN)
-	}
-
-	rawURL := "https://d3kp1rtsk23gz0.cloudfront.net/"
-	privateKey, err := sign.LoadPEMPrivKey(strings.NewReader(privateKeyString))
-	if err != nil {
-		fmt.Println("failed to load private key")
-	}
-
-	signer := sign.NewURLSigner(publicIDString, privateKey)
-	signedURL, err := signer.Sign(rawURL, time.Now().Add(1*time.Hour))
-	if err != nil {
-		log.Fatalf("Failed to sign url, err: %s\n", err.Error())
-	}
-
-	resp := Response{
-		StatusCode:      200,
-		IsBase64Encoded: false,
-		Body:            signedURL,
-	}
-
-	return resp, nil
+	return &file, nil
 }
 
-func main() {
-	lambda.Start(Handler)
+type FileTableItem struct {
+	FileID   string `json:"FileID"`
+	UserID   string `json:"UserID"`
+	FileName string `json:"FileName"`
+	Modified string `json:"Modified"`
+}
+
+func PutDynamoDB(tableName string, fileData FileTableItem) error {
+	svc := dynamodb.New(session.New(),
+		aws.NewConfig().WithRegion("us-west-2"))
+
+	dynamoItem, err := dynamodbattribute.MarshalMap(fileData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal fileData into dynamoItem %v\n", fileData)
+	}
+
+	input := &dynamodb.PutItemInput{
+		Item:      dynamoItem,
+		TableName: aws.String(tableName),
+	}
+
+	_, err = svc.PutItem(input)
+	if err != nil {
+		return fmt.Errorf("PutItem error: %v\n", err)
+	}
+
+	return nil
 }
 
 func RetrieveSecret(secretName string) (string, error) {
@@ -190,4 +128,31 @@ func RetrieveSecret(secretName string) (string, error) {
 	}
 
 	return secretString, nil
+}
+
+func SignURL(rawURL string) (string, error) {
+	privateKeyARN := "arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-private-key-eZTVru"
+	privateKeyString, err := RetrieveSecret(privateKeyARN)
+	if err != nil {
+		fmt.Printf("failed to retrieve private key %v\n", privateKeyARN)
+	}
+
+	publicIDARN := "arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-public-id-tyo5xL"
+	publicIDString, err := RetrieveSecret(publicIDARN)
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve publicID %v", publicIDARN)
+	}
+
+	privateKey, err := sign.LoadPEMPrivKey(strings.NewReader(privateKeyString))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse primary key")
+	}
+
+	signer := sign.NewURLSigner(publicIDString, privateKey)
+	signedURL, err := signer.Sign(rawURL, time.Now().Add(1*time.Hour))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign url")
+	}
+
+	return signedURL, nil
 }

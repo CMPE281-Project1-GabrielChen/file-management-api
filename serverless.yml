@@ -28,9 +28,28 @@ provider:
   lambdaHashingVersion: 20201221
   stage: ${opt:stage, 'dev'}
   region: us-west-2
-  apiGateway:
-    binaryMediaTypes:
-      - '*/*'
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource:
+        - arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-private-key-eZTVru
+        - arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-public-id-tyo5xL 
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:BatchGet*"
+        - "dynamodb:DescribeStream"
+        - "dynamodb:DescribeTable"
+        - "dynamodb:Get*"
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+        - "dynamodb:BatchWrite*"
+        - "dynamodb:CreateTable"
+        - "dynamodb:Delete*"
+        - "dynamodb:Update*"
+        - "dynamodb:PutItem"
+      Resource:
+        - arn:aws:dynamodb:us-west-2:988203901673:table/dev-files
 
 # you can overwrite defaults here
 #  stage: dev
@@ -65,21 +84,70 @@ functions:
   hello:
     handler: bin/hello
     events:
-      - httpApi:
+      - http:
           path: /hello
           method: get
   world:
     handler: bin/world
     events:
-      - httpApi:
+      - http:
           path: /world
           method: get
+  uploadFile:
+    handler: bin/upload_file
+    events:
+      - http:
+          path: /{userId}
+          method: post
+          request:
+            parameters:
+              paths:
+                userId: true
+  downloadFile:
+    handler: bin/download_file
+    events:
+      - http:
+          path: /{userId}/{fileId}
+          method: get
+          request:
+            parameters:
+              paths:
+                userId: true
+                fileId: true
+  # deleteFile:
+  #   handler: bin/delete_file
+  #   events:
+  #     - http:
+  #         path: /{userId}/{fileId}
+  #         method: delete
+  #         request:
+  #           parameters:
+  #             paths:
+  #               userId: true
+  #               fileId: true
+  # getUserFiles:
+  #   handler: bin/get_user_files
+  #   events:
+  #     - http:
+  #         path: /{userId}
+  #         method: get
+  #         request:
+  #           parameters:
+  #             paths:
+  #               userId: true
+  # getAllFiles:
+  #   handler: bin/get_all_files
+  #   events:
+  #     - http:
+  #         path: /
+  #         method: get
+
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
 # events:
 #    events:
-#      - httpApi:
+#      - http:
 #          path: /users/create
 #          method: get
 #      - websocket: $connect
