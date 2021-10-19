@@ -68,11 +68,14 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 	uuidWithHyphen := uuid.New()
 	fileID := strings.Replace(uuidWithHyphen.String(), "-", "", -1)
 
+	t := time.Now().UTC().Format(time.RFC3339)
+
 	item := aws_usages.FileTableItem{
 		FileID:   fileID,
 		UserID:   userId,
 		FileName: body.FileName,
-		Modified: time.Now().String(),
+		Modified: t,
+		Uploaded: t,
 	}
 
 	if err := aws_usages.PutDynamoDB("dev-files", item); err != nil {
@@ -92,7 +95,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 	return Response{
 		StatusCode:      200,
 		IsBase64Encoded: false,
-		Body:            string(js),
+		Headers: map[string]string{
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(js),
 	}, nil
 
 	// var body UploadFileRequest

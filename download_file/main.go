@@ -62,7 +62,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		StatusCode:      307,
 		IsBase64Encoded: false,
 		Headers: map[string]string{
-			"Location": signedUrl,
+			"Access-Control-Allow-Origin": "*",
+			"Location":                    signedUrl,
 		},
 	}, nil
 }

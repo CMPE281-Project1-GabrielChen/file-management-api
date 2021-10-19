@@ -48,7 +48,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 	return Response{
 		StatusCode:      200,
 		IsBase64Encoded: false,
-		Body:            string(js),
+		Headers: map[string]string{
+			"Access-Control-Allow-Origin": "*",
+		},
+		Body: string(js),
 	}, nil
 }
 

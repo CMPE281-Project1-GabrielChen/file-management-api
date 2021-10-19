@@ -16,10 +16,13 @@ import (
 )
 
 type FileTableItem struct {
-	FileID   string `json:"FileID"`
-	UserID   string `json:"UserID"`
-	FileName string `json:"FileName"`
-	Modified string `json:"Modified"`
+	FileID    string `json:"FileID"`
+	UserID    string `json:"UserID"`
+	FirstName string `json:"FirstName"`
+	LastName  string `json:"LastName"`
+	FileName  string `json:"FileName"`
+	Modified  string `json:"Modified"`
+	Uploaded  string `json:"Uploaded"`
 }
 
 func ListAllFilesDynamoDB(tableName string) (*[]FileTableItem, error) {
