@@ -81,24 +81,10 @@ package:
     - ./bin/**
 
 functions:
-  hello:
-    handler: bin/hello
-    events:
-      - http:
-          path: /hello
-          method: get
-          cors: true
-  world:
-    handler: bin/world
-    events:
-      - http:
-          path: /world
-          method: get
-          cors: true
   uploadFile:
     handler: bin/upload_file
     events:
-      - http:
+      - httpApi:
           path: /{userId}
           method: post
           cors: true
@@ -109,7 +95,7 @@ functions:
   downloadFile:
     handler: bin/download_file
     events:
-      - http:
+      - httpApi:
           path: /{userId}/{fileId}
           method: get
           cors: true
@@ -121,7 +107,7 @@ functions:
   deleteFile:
     handler: bin/delete_file
     events:
-      - http:
+      - httpApi:
           path: /{userId}/{fileId}
           method: delete
           cors: true
@@ -133,7 +119,7 @@ functions:
   listUserFiles:
     handler: bin/list_files
     events:
-      - http:
+      - httpApi:
           path: /{userId}
           method: get
           cors: true
@@ -144,14 +130,14 @@ functions:
   listAllFiles:
     handler: bin/list_all_files
     events:
-      - http:
+      - httpApi:
           path: /
           method: get
           cors: true
   overwriteFile:
     handler: bin/overwrite_file
     events:
-      - http:
+      - httpApi:
           path: /{userId}/{fileId}
           method: patch
           cors: true

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -12,6 +13,10 @@ import (
 
 // https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
 type Response events.APIGatewayProxyResponse
+
+type DownloadReturn struct {
+	DownloadURL string `json:"DownloadURL"`
+}
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
 func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Response, error) {
@@ -58,13 +63,22 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		return Response{StatusCode: 500}, fmt.Errorf("failed to sign url\n")
 	}
 
+	dr := DownloadReturn{
+		DownloadURL: signedUrl,
+	}
+
+	js, err := json.Marshal(dr)
+	if err != nil {
+		return Response{StatusCode: 500}, fmt.Errorf("failed to marshal signedURL\n")
+	}
+
 	return Response{
-		StatusCode:      307,
+		StatusCode:      200,
 		IsBase64Encoded: false,
 		Headers: map[string]string{
 			"Access-Control-Allow-Origin": "*",
-			"Location":                    signedUrl,
 		},
+		Body: string(js),
 	}, nil
 }
 
