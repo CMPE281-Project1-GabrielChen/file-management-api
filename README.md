@@ -12,7 +12,8 @@ $ make deploy
 ## Middleware
 ```
 JWT Token Authorization
-Checks the Access Token's claims agains the resource being requested to ensure that the requestor is authorized to access that information.
+Checks the JWT Token agains the userpool and userpool client id 
+Setup on API Gateway
 ```
 
 ## APIGateway Endpoints/Lambdas
@@ -45,5 +46,3 @@ Usage: Lambda@Edge Function for Cloudfront Distribution for limiting access to d
 Implementation:
     Decodes JWT, and checks for correct user authorizations against Cognito Identity Pool (Federated Identities)
 ```
-
-## Architecture
