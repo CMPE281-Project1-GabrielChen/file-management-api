@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/CMPE281-Project1-GabrielChen/file-management-api/aws_usages"
-	"github.com/CMPE281-Project1-GabrielChen/file-management-api/uuid"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -29,14 +27,11 @@ import (
 type Response events.APIGatewayProxyResponse
 
 type UploadFileRequest struct {
-	FileName  string `json:"FileName"`
-	FirstName string `json:"FirstName"`
-	LastName  string `json:"LastName"`
+	FileName string `json:"FileName"`
 }
 
-type UploadFileReturn struct {
-	FileID    string `json:"FileID"`
-	UploadURL string `json:"UploadURL"`
+type PatchFileReturn struct {
+	PostURL string `json:"PostURL"`
 }
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
@@ -56,6 +51,20 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		return Response{StatusCode: 500}, fmt.Errorf("no userId found???\n")
 	}
 
+	fileIdRaw, found := request.PathParameters["fileId"]
+	var fileID string
+	if found {
+		value, err := url.QueryUnescape(fileIdRaw)
+		if nil != err {
+			return Response{StatusCode: 500},
+				fmt.Errorf("failed to unescape fileIdRaw: %v, error: %v\n", fileIdRaw, err)
+		}
+
+		fileID = value
+	} else {
+		return Response{StatusCode: 500}, fmt.Errorf("no userId found???\n")
+	}
+
 	var body UploadFileRequest
 	err := json.Unmarshal([]byte(request.Body), &body)
 	if err != nil {
@@ -67,28 +76,27 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 		return Response{StatusCode: 500}, fmt.Errorf("failed to sign url\n")
 	}
 
-	uuidWithHyphen := uuid.New()
-	fileID := strings.Replace(uuidWithHyphen.String(), "-", "", -1)
+	tableItem, err := aws_usages.GetFileDynamoDB("dev-files", fileID)
+	if err != nil {
+		return Response{StatusCode: 500}, err
+	}
+	if tableItem.UserID != userId {
+		return Response{StatusCode: 404}, nil
+	}
 
 	t := time.Now().UTC().Format(time.RFC3339)
 
-	item := aws_usages.FileTableItem{
-		FileID:    fileID,
-		UserID:    userId,
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
-		FileName:  body.FileName,
-		Modified:  t,
-		Uploaded:  t,
+	item := aws_usages.OverwriteTableItem{
+		FileName: body.FileName,
+		Modified: t,
 	}
 
-	if err := aws_usages.PutDynamoDB("dev-files", item); err != nil {
+	if err := aws_usages.OverwriteDynamoDB("dev-files", item, fileID); err != nil {
 		return Response{StatusCode: 500}, fmt.Errorf("uploadFile failed: %v\n", err)
 	}
 
-	resp := UploadFileReturn{
-		FileID:    fileID,
-		UploadURL: signedUrl,
+	resp := PatchFileReturn{
+		PostURL: signedUrl,
 	}
 
 	js, err := json.Marshal(resp)

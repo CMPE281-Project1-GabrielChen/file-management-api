@@ -10,6 +10,7 @@ build:
 	env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/delete_file delete_file/main.go
 	env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/list_files list_files/main.go
 	env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/list_all_files list_all_files/main.go
+	env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/overwrite_file overwrite_file/main.go
 
 clean:
 	rm -rf ./bin ./vendor

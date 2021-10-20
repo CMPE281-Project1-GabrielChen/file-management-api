@@ -25,6 +25,46 @@ type FileTableItem struct {
 	Uploaded  string `json:"Uploaded"`
 }
 
+type OverwriteTableItem struct {
+	Modified string `json:"Modified"`
+	FileName string `json:"FileName"`
+}
+
+type OverwriteKey struct {
+	FileID string `json:"FileID"`
+}
+
+func OverwriteDynamoDB(tableName string, fileData OverwriteTableItem, fileID string) error {
+	svc := dynamodb.New(session.New(),
+		aws.NewConfig().WithRegion("us-west-2"))
+
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":m": {
+				S: aws.String(fileData.Modified),
+			},
+			":f": {
+				S: aws.String(fileData.FileName),
+			},
+		},
+		TableName: aws.String(tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"FileID": {
+				S: aws.String(fileID),
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("SET Modified = :m, FileName = :f"),
+	}
+
+	_, err := svc.UpdateItem(input)
+	if err != nil {
+		return fmt.Errorf("UpdateItem error: %v\n", err)
+	}
+
+	return nil
+}
+
 func ListAllFilesDynamoDB(tableName string) (*[]FileTableItem, error) {
 	svc := dynamodb.New(session.New(),
 		aws.NewConfig().WithRegion("us-west-2"))
