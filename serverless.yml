@@ -28,6 +28,28 @@ provider:
   lambdaHashingVersion: 20201221
   stage: ${opt:stage, 'dev'}
   region: us-west-2
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource:
+        - arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-private-key-eZTVru
+        - arn:aws:secretsmanager:us-west-2:988203901673:secret:dev-file-management-public-id-tyo5xL 
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:BatchGet*"
+        - "dynamodb:DescribeStream"
+        - "dynamodb:DescribeTable"
+        - "dynamodb:Get*"
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+        - "dynamodb:BatchWrite*"
+        - "dynamodb:CreateTable"
+        - "dynamodb:Delete*"
+        - "dynamodb:Update*"
+        - "dynamodb:PutItem"
+      Resource:
+        - arn:aws:dynamodb:us-west-2:988203901673:table/dev-files
 
 # you can overwrite defaults here
 #  stage: dev
@@ -59,24 +81,74 @@ package:
     - ./bin/**
 
 functions:
-  hello:
-    handler: bin/hello
+  uploadFile:
+    handler: bin/upload_file
     events:
       - httpApi:
-          path: /hello
-          method: get
-  world:
-    handler: bin/world
+          path: /{userId}
+          method: post
+          cors: true
+          request:
+            parameters:
+              paths:
+                userId: true
+  downloadFile:
+    handler: bin/download_file
     events:
       - httpApi:
-          path: /world
+          path: /{userId}/{fileId}
           method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                userId: true
+                fileId: true
+  deleteFile:
+    handler: bin/delete_file
+    events:
+      - httpApi:
+          path: /{userId}/{fileId}
+          method: delete
+          cors: true
+          request:
+            parameters:
+              paths:
+                userId: true
+                fileId: true
+  listUserFiles:
+    handler: bin/list_files
+    events:
+      - httpApi:
+          path: /{userId}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                userId: true
+  listAllFiles:
+    handler: bin/list_all_files
+    events:
+      - httpApi:
+          path: /
+          method: get
+          cors: true
+  overwriteFile:
+    handler: bin/overwrite_file
+    events:
+      - httpApi:
+          path: /{userId}/{fileId}
+          method: patch
+          cors: true
+
+
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
 # events:
 #    events:
-#      - httpApi:
+#      - http:
 #          path: /users/create
 #          method: get
 #      - websocket: $connect
